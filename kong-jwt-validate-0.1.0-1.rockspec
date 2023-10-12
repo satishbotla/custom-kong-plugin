@@ -1,7 +1,7 @@
 package = "kong-jwt-validate"
 version = "0.1.0-1"
 source = {
-  url = "https://github.com/satishbotla/custom-kong-plugin.git"
+  url = "git://github.com/satishbotla/custom-kong-plugin.git"
 }
 
 description = {
