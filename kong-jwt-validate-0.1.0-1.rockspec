@@ -10,7 +10,7 @@ description = {
     Provides custom JWT token validation for Kong.
   ]],
   license = "MIT",
-  homepage = "https://github.com/myuser/kong-jwt-validate"
+  homepage = "https://github.com/satishbotla/custom-kong-plugin"
 }
 
 dependencies = {
