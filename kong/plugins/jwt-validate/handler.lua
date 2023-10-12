@@ -1,5 +1,14 @@
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
+local fmt = string.format
+local kong = kong
+local type = type
+local error = error
+local ipairs = ipairs
+local pairs = pairs
+local tostring = tostring
+local re_gmatch = ngx.re.gmatch
+
 local JwtValidator = {
   PRIORITY = 1000,
   VERSION = "0.1.0",
