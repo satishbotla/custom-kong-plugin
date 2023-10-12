@@ -117,20 +117,88 @@ function JwtValidator:access(conf)
   -- Get configured issuer
   local issuer = conf.issuer
 
-  local claims, err = jwt:verify()
-  if err then
-    return kong.response.exit(401, {message="Invalid token"})
+  local claims = jwt.claims
+  local header = jwt.header
+
+  local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
+  if not jwt_secret_key then
+    return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }
+  elseif jwt_secret_key == "" then
+    return false, { status = 401, message = "Invalid '" .. conf.key_claim_name .. "' in claims" }
   end
 
-  -- Validate claims like exp, iss etc
-  if claims.exp < ngx.time() then
-    return kong.response.exit(401, {message="Token expired"})
+  -- Retrieve the secret
+  local jwt_secret_cache_key = kong.db.jwt_secrets:cache_key(jwt_secret_key)
+  local jwt_secret, err      = kong.cache:get(jwt_secret_cache_key, nil,
+                                              load_credential, jwt_secret_key)
+  if err then
+    return error(err)
+  end
+
+  if not jwt_secret then
+    return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
+  end
+
+  local algorithm = jwt_secret.algorithm or "HS256"
+
+  -- Verify "alg"
+  if jwt.header.alg ~= algorithm then
+    return false, { status = 401, message = "Invalid algorithm" }
+  end
+
+  local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
+                           jwt_secret.secret or jwt_secret.rsa_public_key
+
+  if conf.secret_is_base64 then
+    jwt_secret_value = jwt:base64_decode(jwt_secret_value)
+  end
+
+  if not jwt_secret_value then
+    return false, { status = 401, message = "Invalid key/secret" }
+  end
+
+  -- Now verify the JWT signature
+  if not jwt:verify_signature(jwt_secret_value) then
+    return false, { status = 401, message = "Invalid signature" }
+  end
+
+  -- Verify the JWT registered claims
+  local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
+  if not ok_claims then
+    return false, { status = 401, errors = errors }
   end
 
   -- Validate issuer 
   if claims.iss ~= issuer then
     return kong.response.exit(401, {message="Invalid issuer"})
   end
+
+  -- Verify the JWT registered claims
+  if conf.maximum_expiration ~= nil and conf.maximum_expiration > 0 then
+    local ok, errors = jwt:check_maximum_expiration(conf.maximum_expiration)
+    if not ok then
+      return false, { status = 401, errors = errors }
+    end
+  end
+
+  -- Retrieve the consumer
+  local consumer_cache_key = kong.db.consumers:cache_key(jwt_secret.consumer.id)
+  local consumer, err      = kong.cache:get(consumer_cache_key, nil,
+                                            kong.client.load_consumer,
+                                            jwt_secret.consumer.id, true)
+  if err then
+    return error(err)
+  end
+
+  -- However this should not happen
+  if not consumer then
+    return false, {
+      status = 401,
+      message = fmt("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key)
+    }
+  end
+
+  set_consumer(consumer, jwt_secret, token)
 
   -- Add claims to request context
   kong.ctx.shared.jwt_claims = claims
