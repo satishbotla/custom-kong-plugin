@@ -118,16 +118,13 @@ function JwtValidator:access(conf)
       return false, { status = 401, message = "Unrecognizable token" }
     end
   end
-  kong.log.err("here after validating token type")
-  send_to_stdlog(ngx_err, "here after validating token type")
+
   local jwt, err = jwt_decoder:new(token)
   if err then
     return kong.response.exit(401, {message=err})
   end
   -- Get configured issuer
   local issuer = conf.issuer
-  kong.log.err("issuer identified", issuer)
-  send_to_stdlog(ngx_err, "issuer identified ", issuer)
   local claims = jwt.claims
   local header = jwt.header
 
@@ -137,7 +134,7 @@ function JwtValidator:access(conf)
   elseif jwt_secret_key == "" then
     return false, { status = 401, message = "Invalid '" .. conf.key_claim_name .. "' in claims" }
   end
-
+  kong.log.err("jwt secret key collected ", jwt_secret_key)
   -- Retrieve the secret
   local jwt_secret_cache_key = kong.db.jwt_secrets:cache_key(jwt_secret_key)
   local jwt_secret, err      = kong.cache:get(jwt_secret_cache_key, nil,
@@ -145,18 +142,18 @@ function JwtValidator:access(conf)
   if err then
     return error(err)
   end
-
+  kong.log.err("after jwt secret key collected ", jwt_secret_key)
   if not jwt_secret then
     return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
   end
 
   local algorithm = jwt_secret.algorithm or "HS256"
-
+  kong.log.err("algorithm collected ", algorithm)
   -- Verify "alg"
   if jwt.header.alg ~= algorithm then
     return false, { status = 401, message = "Invalid algorithm" }
   end
-
+  kong.log.err("after algorithm collected ", algorithm)
   local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
                            jwt_secret.secret or jwt_secret.rsa_public_key
 
@@ -181,7 +178,9 @@ function JwtValidator:access(conf)
 
   -- Validate issuer 
   if claims.iss ~= issuer then
-    return kong.response.exit(401, {message="Invalid issuer"})
+  --  return kong.response.exit(401, {message="Invalid issuer"})
+    kong.log.err("Invalid issuer ", claims.iss)
+    return false, { status = 401, message = "Invalid issuer" }
   end
 
   -- Verify the JWT registered claims
