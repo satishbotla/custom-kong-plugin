@@ -5,9 +5,9 @@ source = {
 }
 
 description = {
-  summary = "Custom JWT validation plugin for Kong kong kong more more another asdadds",
+  summary = "Custom JWT validation plugin for Kong kong kong more more another asdasdadds",
   detailed = [[
-    Provides custom JWT token validation for Kong kong kong kong more another asdasds ds.
+    Provides custom JWT token validation for Kong kong kong kong more another adad ds.
   ]],
   license = "MIT",
   homepage = "https://github.com/satishbotla/custom-kong-plugin"

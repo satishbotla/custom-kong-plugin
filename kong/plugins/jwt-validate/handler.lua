@@ -100,6 +100,14 @@ local function retrieve_tokens(conf)
   return tokens
 end
 
+local function load_credential(jwt_secret_key)
+  local row, err = kong.db.jwt_secrets:select_by_key(jwt_secret_key)
+  if err then
+    return nil, err
+  end
+  return row
+end
+
 function JwtValidator:access(conf)
 
   local token, err = retrieve_tokens(conf)
@@ -137,6 +145,7 @@ function JwtValidator:access(conf)
   kong.log.err("jwt secret key collected ", jwt_secret_key)
   -- Retrieve the secret
   local jwt_secret_cache_key = kong.db.jwt_secrets:cache_key(jwt_secret_key)
+  kong.log.err("jwt secret cache key collected ", jwt_secret_cache_key)
   local jwt_secret, err      = kong.cache:get(jwt_secret_cache_key, nil,
                                               load_credential, jwt_secret_key)
   if err then
