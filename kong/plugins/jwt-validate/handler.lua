@@ -153,11 +153,12 @@ function JwtValidator:access(conf)
   end
   kong.log.err("after jwt secret key collected ", jwt_secret_key)
   if not jwt_secret then
+    kong.log.err("case jwt_secret ", jwt_secret, conf.key_claim_name)
     return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
   end
-
+  kong.log.err("after case jwt_secret ", jwt_secret)
   local algorithm = jwt_secret.algorithm or "HS256"
-  kong.log.err("algorithm collected ", algorithm)
+  kong.log.err("after algorithm collected ", algorithm)
   -- Verify "alg"
   if jwt.header.alg ~= algorithm then
     return false, { status = 401, message = "Invalid algorithm" }

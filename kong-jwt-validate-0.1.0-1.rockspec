@@ -5,7 +5,7 @@ source = {
 }
 
 description = {
-  summary = "Custom JWT validation plugin for Kong kong kong more more another asdasdadds",
+  summary = "Custom JWT validation plugin for Kong kong kong more more another asdasdaddsasd ",
   detailed = [[
     Provides custom JWT token validation for Kong kong kong kong more another adad ds.
   ]],
