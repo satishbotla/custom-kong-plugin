@@ -8,11 +8,19 @@ local ipairs = ipairs
 local pairs = pairs
 local tostring = tostring
 local re_gmatch = ngx.re.gmatch
+local ngx_log = ngx.log
+local ngx_warn = ngx.WARN
+local ngx_err = ngx.ERR
 
 local JwtValidator = {
   PRIORITY = 1000,
   VERSION = "0.1.0",
 }
+
+--- Log what is needed
+local function send_to_stdlog(ngxlevel, message)
+  return ngx_log(ngxlevel, message)  -- this only works with LuaJIT
+end
 
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in cookies, and finally
@@ -95,10 +103,11 @@ end
 function JwtValidator:access(conf)
 
   local token, err = retrieve_tokens(conf)
+  kong.log.err("Token collected ", token, err)
   if err then
     return error(err)
   end
-
+  kong.log.err("After token collected ")
   local token_type = type(token)
   if token_type ~= "string" then
     if token_type == "nil" then
@@ -109,14 +118,16 @@ function JwtValidator:access(conf)
       return false, { status = 401, message = "Unrecognizable token" }
     end
   end
-
+  kong.log.err("here after validating token type")
+  send_to_stdlog(ngx_err, "here after validating token type")
   local jwt, err = jwt_decoder:new(token)
   if err then
     return kong.response.exit(401, {message=err})
   end
   -- Get configured issuer
   local issuer = conf.issuer
-
+  kong.log.err("issuer identified", issuer)
+  send_to_stdlog(ngx_err, "issuer identified ", issuer)
   local claims = jwt.claims
   local header = jwt.header
 
