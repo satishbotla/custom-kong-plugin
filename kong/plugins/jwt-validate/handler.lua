@@ -136,6 +136,13 @@ function JwtValidator:access(conf)
   local claims = jwt.claims
   local header = jwt.header
 
+  -- Validate issuer 
+  if claims.iss ~= issuer then
+    --  return kong.response.exit(401, {message="Invalid issuer"})
+      kong.log.err("Invalid issuer ", claims.iss)
+      return false, { status = 401, message = "Invalid issuer" }
+  end
+
   local jwt_secret_key = claims[conf.key_claim_name] or header[conf.key_claim_name]
   if not jwt_secret_key then
     return false, { status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims" }
@@ -152,6 +159,10 @@ function JwtValidator:access(conf)
     return error(err)
   end
   kong.log.err("after jwt secret key collected ", jwt_secret_key)
+  if jwt_secret == 'nil' then
+    kong.log.err("nil case jwt_secret ", jwt_secret, conf.key_claim_name)
+    return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
+  end
   if not jwt_secret then
     kong.log.err("case jwt_secret ", jwt_secret, conf.key_claim_name)
     return false, { status = 401, message = "No credentials found for given '" .. conf.key_claim_name .. "'" }
@@ -184,13 +195,6 @@ function JwtValidator:access(conf)
   local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
   if not ok_claims then
     return false, { status = 401, errors = errors }
-  end
-
-  -- Validate issuer 
-  if claims.iss ~= issuer then
-  --  return kong.response.exit(401, {message="Invalid issuer"})
-    kong.log.err("Invalid issuer ", claims.iss)
-    return false, { status = 401, message = "Invalid issuer" }
   end
 
   -- Verify the JWT registered claims
